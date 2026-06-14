@@ -1,0 +1,278 @@
+{% extends 'detector/base.html' %}
+{% block content %}
+
+<!-- HERO -->
+<div class="card" style="text-align:center;padding:3rem 2rem;background:linear-gradient(135deg,#fff 60%,#FCEBEB)">
+  <div style="font-size:3rem;margin-bottom:1rem">🔍</div>
+  <h1 style="font-size:26px;font-weight:700;margin-bottom:0.75rem">Fake Document & Media Detector</h1>
+  <p style="color:var(--text-muted);max-width:500px;margin:0 auto 2rem">
+    Documents, photos aur videos upload karo — AI turant pata lagaega ki asli hai ya nakli. Aadhaar, Marksheet, Deepfake sab detect hoga.
+  </p>
+
+  <!-- TABS -->
+  <div class="tabs" style="justify-content:center">
+    <button class="tab-btn active" onclick="switchTab('document',this)">📄 Document</button>
+    <button class="tab-btn" onclick="switchTab('photo',this)">🖼️ Photo</button>
+    <button class="tab-btn" onclick="switchTab('video',this)">🎥 Video</button>
+  </div>
+
+  <!-- UPLOAD FORM -->
+  <form id="uploadForm" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="hidden" name="file_type" id="fileTypeInput" value="document">
+
+    <div class="upload-zone" id="uploadZone"
+      onclick="document.getElementById('fileInput').click()"
+      ondragover="event.preventDefault();this.classList.add('dragover')"
+      ondragleave="this.classList.remove('dragover')"
+      ondrop="handleDrop(event)">
+      <div class="upload-icon" id="uploadEmoji">📄</div>
+      <p style="font-weight:600;font-size:16px">Click karo ya drag & drop karo</p>
+      <p id="uploadHint" style="color:var(--text-muted);font-size:14px;margin-top:4px">PDF, JPG, PNG, Aadhaar, Marksheet — sab chalega</p>
+      <div style="display:flex;gap:6px;justify-content:center;margin-top:1rem;flex-wrap:wrap" id="fileTags">
+        <span style="background:#f0f0f0;padding:3px 10px;border-radius:5px;font-size:12px">PDF</span>
+        <span style="background:#f0f0f0;padding:3px 10px;border-radius:5px;font-size:12px">JPG/PNG</span>
+        <span style="background:#f0f0f0;padding:3px 10px;border-radius:5px;font-size:12px">Aadhaar</span>
+        <span style="background:#f0f0f0;padding:3px 10px;border-radius:5px;font-size:12px">Marksheet</span>
+      </div>
+    </div>
+
+    <input type="file" id="fileInput" name="file" style="display:none" onchange="fileSelected(this)">
+
+    <div id="fileInfo" style="display:none;background:#f5f5f5;border-radius:8px;padding:10px 16px;margin-top:1rem;text-align:left;max-width:500px;margin-left:auto;margin-right:auto">
+      <strong>📎</strong> <span id="fileName"></span>
+    </div>
+
+    <button type="button" class="btn btn-red" id="analyzeBtn" disabled
+      style="margin-top:1.5rem;font-size:15px;padding:12px 32px"
+      onclick="submitAnalysis()">
+      🔍 Analyze Karo
+    </button>
+  </form>
+</div>
+
+<!-- STATS -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-num">{{ total_scans }}</div>
+    <div class="stat-label">Total Scans</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" style="color:var(--red)">{{ fake_count }}</div>
+    <div class="stat-label">Fake Detected</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" style="color:var(--green)">{{ real_count }}</div>
+    <div class="stat-label">Real Verified</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" style="color:var(--amber)">{{ suspicious_count }}</div>
+    <div class="stat-label">Suspicious</div>
+  </div>
+</div>
+
+<!-- RESULT (AJAX) -->
+<div id="resultSection" style="display:none">
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+      <h2 class="card-title">Analysis Result</h2>
+      <span id="resultBadge" class="badge"></span>
+    </div>
+    <p id="resultFileName" style="color:var(--text-muted);font-size:14px;margin-bottom:1.25rem"></p>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1rem;margin-bottom:1.5rem" id="resultMetrics"></div>
+
+    <div style="margin-bottom:6px;font-size:14px;color:var(--text-muted)">Manipulation probability</div>
+    <div class="progress" style="margin-bottom:4px">
+      <div class="progress-bar" id="resultBar" style="width:0%"></div>
+    </div>
+    <div id="resultScore" style="font-size:13px;color:var(--text-muted);margin-bottom:1rem"></div>
+
+    <p id="resultSummary" style="font-size:14px;padding:12px;background:var(--bg);border-radius:8px;margin-bottom:1.25rem"></p>
+
+    <h3 style="font-size:15px;font-weight:600;margin-bottom:8px">Detailed Checks</h3>
+    <div class="checks-grid" id="checksGrid"></div>
+
+    <div style="margin-top:1.5rem;display:flex;gap:1rem;flex-wrap:wrap">
+      <a id="detailLink" href="#" class="btn btn-outline">📋 Full Report Dekho</a>
+      <button onclick="location.reload()" class="btn btn-red">🔄 Nayi File Upload Karo</button>
+    </div>
+  </div>
+</div>
+
+<!-- RECENT SCANS -->
+{% if recent %}
+<div class="card">
+  <h2 class="card-title" style="margin-bottom:1rem">🕓 Recent Scans</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>File Name</th>
+        <th>Type</th>
+        <th>Verdict</th>
+        <th>Score</th>
+        <th>Date</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in recent %}
+      <tr>
+        <td style="font-weight:500">{{ r.file_name }}</td>
+        <td style="color:var(--text-muted)">{{ r.get_file_type_display }}</td>
+        <td><span class="badge badge-{{ r.verdict }}">{{ r.get_verdict_display }}</span></td>
+        <td>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="progress" style="width:80px">
+              <div class="progress-bar" style="width:{{ r.fake_score }}%;background:{% if r.fake_score >= 75 %}var(--red){% elif r.fake_score >= 45 %}var(--amber){% else %}var(--green){% endif %}"></div>
+            </div>
+            <span style="font-size:13px">{{ r.fake_score }}%</span>
+          </div>
+        </td>
+        <td style="color:var(--text-muted);font-size:13px">{{ r.uploaded_at|date:"d M, H:i" }}</td>
+        <td><a href="/report/{{ r.pk }}/" style="color:var(--red);font-size:13px;text-decoration:none">View →</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div style="margin-top:1rem">
+    <a href="/history/" class="btn btn-outline" style="font-size:13px">📋 Saari History Dekho →</a>
+  </div>
+</div>
+{% endif %}
+
+<!-- FEATURES -->
+<div class="card">
+  <h2 class="card-title" style="margin-bottom:1.5rem">🔬 Kya kya detect hota hai?</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem">
+    {% for item in features %}
+    <div style="padding:1rem;background:var(--bg);border-radius:8px">
+      <div style="font-size:1.5rem;margin-bottom:8px">{{ item.emoji }}</div>
+      <div style="font-weight:600;margin-bottom:4px">{{ item.title }}</div>
+      <div style="font-size:13px;color:var(--text-muted)">{{ item.desc }}</div>
+    </div>
+    {% endfor %}
+    <div style="padding:1rem;background:var(--bg);border-radius:8px">
+      <div style="font-size:1.5rem;margin-bottom:8px">🪪</div>
+      <div style="font-weight:600;margin-bottom:4px">Government Documents</div>
+      <div style="font-size:13px;color:var(--text-muted)">Aadhaar, PAN, Voter ID, Passport — font, watermark aur metadata check</div>
+    </div>
+    <div style="padding:1rem;background:var(--bg);border-radius:8px">
+      <div style="font-size:1.5rem;margin-bottom:8px">🎓</div>
+      <div style="font-weight:600;margin-bottom:4px">Education Certificates</div>
+      <div style="font-size:13px;color:var(--text-muted)">Marksheets, Degrees — digital signature aur seal verify</div>
+    </div>
+    <div style="padding:1rem;background:var(--bg);border-radius:8px">
+      <div style="font-size:1.5rem;margin-bottom:8px">🤖</div>
+      <div style="font-weight:600;margin-bottom:4px">Deepfake Photos</div>
+      <div style="font-size:13px;color:var(--text-muted)">AI-generated faces detect — GAN artifacts, eye reflection analysis</div>
+    </div>
+    <div style="padding:1rem;background:var(--bg);border-radius:8px">
+      <div style="font-size:1.5rem;margin-bottom:8px">🎬</div>
+      <div style="font-weight:600;margin-bottom:4px">Fake Videos</div>
+      <div style="font-size:13px;color:var(--text-muted)">Face swap, lip sync manipulation aur temporal inconsistency detection</div>
+    </div>
+    <div style="padding:1rem;background:var(--bg);border-radius:8px">
+      <div style="font-size:1.5rem;margin-bottom:8px">🖼️</div>
+      <div style="font-weight:600;margin-bottom:4px">Image Manipulation</div>
+      <div style="font-size:13px;color:var(--text-muted)">ELA analysis se Photoshop edits aur clone-tool detect karo</div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const tabConfig = {
+  document: { emoji:'📄', hint:'PDF, JPG, PNG, Aadhaar, Marksheet sab chalega', tags:['PDF','JPG/PNG','Aadhaar','Marksheet','Income Cert'] },
+  photo:    { emoji:'🖼️', hint:'Photo upload karo deepfake aur manipulation check ke liye', tags:['JPG','PNG','WEBP','HEIC','BMP'] },
+  video:    { emoji:'🎥', hint:'Video upload karo face-swap detection ke liye', tags:['MP4','AVI','MOV','MKV','WEBM'] },
+};
+
+function switchTab(type, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('fileTypeInput').value = type;
+  const c = tabConfig[type];
+  document.getElementById('uploadEmoji').textContent = c.emoji;
+  document.getElementById('uploadHint').textContent = c.hint;
+  const tags = document.getElementById('fileTags');
+  tags.innerHTML = c.tags.map(t => `<span style="background:#f0f0f0;padding:3px 10px;border-radius:5px;font-size:12px">${t}</span>`).join('');
+}
+
+function fileSelected(inp) {
+  if (inp.files[0]) showFile(inp.files[0]);
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('uploadZone').classList.remove('dragover');
+  if (e.dataTransfer.files[0]) {
+    document.getElementById('fileInput').files = e.dataTransfer.files;
+    showFile(e.dataTransfer.files[0]);
+  }
+}
+
+function showFile(f) {
+  document.getElementById('fileName').textContent = f.name + ' (' + Math.round(f.size/1024) + ' KB)';
+  document.getElementById('fileInfo').style.display = 'block';
+  document.getElementById('analyzeBtn').disabled = false;
+  document.getElementById('resultSection').style.display = 'none';
+}
+
+function submitAnalysis() {
+  const fd = new FormData(document.getElementById('uploadForm'));
+  document.getElementById('loading-overlay').style.display = 'flex';
+  document.getElementById('analyzeBtn').disabled = true;
+
+  fetch('/analyze/', { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('loading-overlay').style.display = 'none';
+      showResult(data);
+    })
+    .catch(() => {
+      document.getElementById('loading-overlay').style.display = 'none';
+      alert('Error aaya! Dobara try karo.');
+    });
+}
+
+function showResult(d) {
+  const section = document.getElementById('resultSection');
+  section.style.display = 'block';
+
+  const badge = document.getElementById('resultBadge');
+  badge.textContent = d.verdict === 'fake' ? 'FAKE' : d.verdict === 'real' ? 'REAL' : 'SUSPICIOUS';
+  badge.className = 'badge badge-' + d.verdict;
+
+  document.getElementById('resultFileName').textContent = '📁 ' + d.file_name;
+  document.getElementById('resultSummary').textContent = d.summary;
+  document.getElementById('resultScore').textContent = d.fake_score + '% manipulation probability';
+  document.getElementById('detailLink').href = '/report/' + d.report_id + '/';
+
+  const barColor = d.fake_score >= 75 ? 'var(--red)' : d.fake_score >= 45 ? 'var(--amber)' : 'var(--green)';
+  const bar = document.getElementById('resultBar');
+  bar.style.background = barColor;
+  setTimeout(() => bar.style.width = d.fake_score + '%', 100);
+
+  document.getElementById('resultMetrics').innerHTML = [
+    { n: d.fake_score + '%', l: 'Fake Score', c: d.fake_score >= 75 ? 'var(--red)' : d.fake_score >= 45 ? 'var(--amber)' : 'var(--green)' },
+    { n: d.issues_found, l: 'Issues Found', c: 'var(--red)' },
+    { n: d.warnings_found, l: 'Warnings', c: 'var(--amber)' },
+    { n: d.verdict.charAt(0).toUpperCase()+d.verdict.slice(1), l: 'Verdict', c: barColor },
+  ].map(m => `<div style="text-align:center;background:var(--bg);border-radius:8px;padding:1rem">
+    <div style="font-size:22px;font-weight:700;color:${m.c}">${m.n}</div>
+    <div style="font-size:12px;color:var(--text-muted);margin-top:4px">${m.l}</div>
+  </div>`).join('');
+
+  document.getElementById('checksGrid').innerHTML = d.checks.map(c => {
+    const icon = c.status==='pass' ? '✅' : c.status==='fail' ? '❌' : '⚠️';
+    const cls = c.status==='pass' ? 'check-pass' : c.status==='fail' ? 'check-fail' : 'check-warn';
+    return `<div class="check-row ${cls}">${icon} ${c.name}</div>`;
+  }).join('');
+
+  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+</script>
+{% endblock %}

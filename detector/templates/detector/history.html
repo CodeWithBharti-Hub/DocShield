@@ -1,0 +1,54 @@
+{% extends 'detector/base.html' %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem">
+  <h1 style="font-size:22px;font-weight:700">📋 Scan History</h1>
+  <a href="/" class="btn btn-red">➕ Nayi Scan Karo</a>
+</div>
+
+{% if reports %}
+<div class="card" style="padding:0;overflow:hidden">
+  <table>
+    <thead>
+      <tr>
+        <th>File Name</th>
+        <th>Type</th>
+        <th>Verdict</th>
+        <th>Fake Score</th>
+        <th>Issues</th>
+        <th>Date & Time</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in reports %}
+      <tr>
+        <td style="font-weight:500;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.file_name }}</td>
+        <td style="color:var(--text-muted)">{{ r.get_file_type_display }}</td>
+        <td><span class="badge badge-{{ r.verdict }}">{{ r.get_verdict_display }}</span></td>
+        <td>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="progress" style="width:70px">
+              <div class="progress-bar" style="width:{{ r.fake_score }}%;background:{% if r.fake_score >= 75 %}var(--red){% elif r.fake_score >= 45 %}var(--amber){% else %}var(--green){% endif %}"></div>
+            </div>
+            <span style="font-size:13px;font-weight:600;color:{% if r.fake_score >= 75 %}var(--red){% elif r.fake_score >= 45 %}var(--amber){% else %}var(--green){% endif %}">{{ r.fake_score }}%</span>
+          </div>
+        </td>
+        <td style="color:var(--red);font-weight:600">{{ r.issues_found }}</td>
+        <td style="color:var(--text-muted);font-size:13px">{{ r.uploaded_at|date:"d M Y, H:i" }}</td>
+        <td><a href="/report/{{ r.pk }}/" style="color:var(--red);font-size:13px;text-decoration:none;font-weight:500">View →</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card" style="text-align:center;padding:4rem">
+  <div style="font-size:3rem;margin-bottom:1rem">📭</div>
+  <p style="font-size:18px;font-weight:600;margin-bottom:0.5rem">Koi scan nahi mila</p>
+  <p style="color:var(--text-muted);margin-bottom:1.5rem">Pehle koi document upload karo</p>
+  <a href="/" class="btn btn-red">🔍 Analyze Karo</a>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends 'detector/base.html' %}
+{% block content %}
+
+<div style="margin-bottom:1.5rem">
+  <a href="/history/" style="color:var(--text-muted);font-size:14px;text-decoration:none">← History</a>
+</div>
+
+<div class="card">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem">
+    <div>
+      <h1 style="font-size:20px;font-weight:700;margin-bottom:4px">{{ report.file_name }}</h1>
+      <p style="color:var(--text-muted);font-size:14px">{{ report.get_file_type_display }} • {{ report.file_size }} KB • {{ report.uploaded_at|date:"d M Y, H:i" }}</p>
+    </div>
+    <span class="badge badge-{{ report.verdict }}" style="font-size:14px;padding:6px 14px">
+      {% if report.verdict == 'fake' %}❌ FAKE{% elif report.verdict == 'real' %}✅ REAL{% else %}⚠️ SUSPICIOUS{% endif %}
+    </span>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1rem;margin-bottom:2rem">
+    <div style="text-align:center;background:var(--bg);border-radius:8px;padding:1.25rem">
+      <div style="font-size:28px;font-weight:700;color:{% if report.fake_score >= 75 %}var(--red){% elif report.fake_score >= 45 %}var(--amber){% else %}var(--green){% endif %}">{{ report.fake_score }}%</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Fake Score</div>
+    </div>
+    <div style="text-align:center;background:var(--bg);border-radius:8px;padding:1.25rem">
+      <div style="font-size:28px;font-weight:700;color:var(--red)">{{ report.issues_found }}</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Issues Found</div>
+    </div>
+    <div style="text-align:center;background:var(--bg);border-radius:8px;padding:1.25rem">
+      <div style="font-size:28px;font-weight:700;color:var(--amber)">{{ report.warnings_found }}</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Warnings</div>
+    </div>
+    <div style="text-align:center;background:var(--bg);border-radius:8px;padding:1.25rem">
+      <div style="font-size:28px;font-weight:700">{{ report.file_size }}</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:4px">File Size (KB)</div>
+    </div>
+  </div>
+
+  <div style="margin-bottom:1.5rem">
+    <div style="font-size:14px;color:var(--text-muted);margin-bottom:6px">Manipulation Probability</div>
+    <div class="progress" style="height:12px">
+      <div class="progress-bar" style="width:{{ report.fake_score }}%;background:{% if report.fake_score >= 75 %}var(--red){% elif report.fake_score >= 45 %}var(--amber){% else %}var(--green){% endif %}"></div>
+    </div>
+  </div>
+
+  <div style="background:var(--bg);border-radius:8px;padding:1rem;margin-bottom:1.5rem">
+    <strong>Summary:</strong> {{ report.summary }}
+  </div>
+
+  <h2 style="font-size:16px;font-weight:700;margin-bottom:1rem">🔬 Detailed Check Results</h2>
+  <div class="checks-grid">
+    {% for check in checks %}
+    <div class="check-row {% if check.status == 'pass' %}check-pass{% elif check.status == 'fail' %}check-fail{% else %}check-warn{% endif %}">
+      {% if check.status == 'pass' %}✅{% elif check.status == 'fail' %}❌{% else %}⚠️{% endif %}
+      {{ check.name }}
+    </div>
+    {% endfor %}
+  </div>
+
+  <div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--border)">
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem">
+      ⚠️ <strong>Disclaimer:</strong> Yeh ek educational tool hai. Legal verification ke liye official authorities se confirm zaroor karo.
+    </p>
+    <div style="display:flex;gap:1rem;flex-wrap:wrap">
+      <a href="/" class="btn btn-red">🔍 Nayi File Analyze Karo</a>
+      <a href="/history/" class="btn btn-outline">📋 History Dekho</a>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

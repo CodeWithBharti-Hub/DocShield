@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DocShield — Fake Document Detector</title>
+{% load static %}
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --red: #E24B4A;
+    --red-dark: #993C1D;
+    --red-light: #FCEBEB;
+    --green: #1D9E75;
+    --green-light: #EAF3DE;
+    --amber: #BA7517;
+    --amber-light: #FAEEDA;
+    --bg: #F5F4F0;
+    --surface: #FFFFFF;
+    --border: rgba(0,0,0,0.1);
+    --text: #1a1a1a;
+    --text-muted: #666;
+    --radius: 10px;
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  /* NAV */
+  .navbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    font-size: 17px;
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  .brand-badge {
+    background: var(--red);
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 1.5rem;
+    list-style: none;
+  }
+
+  .nav-links a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: 6px;
+    transition: all .15s;
+  }
+
+  .nav-links a:hover, .nav-links a.active {
+    background: var(--red-light);
+    color: var(--red);
+  }
+
+  /* MAIN */
+  main { max-width: 900px; margin: 0 auto; padding: 2rem 1rem; }
+
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .card-title {
+    font-size: 17px;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+
+  /* BADGES */
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .badge-fake { background: var(--red-light); color: #A32D2D; }
+  .badge-real { background: var(--green-light); color: #27500A; }
+  .badge-suspicious { background: var(--amber-light); color: #633806; }
+
+  /* PROGRESS */
+  .progress { height: 8px; background: #eee; border-radius: 4px; overflow: hidden; }
+  .progress-bar { height: 100%; border-radius: 4px; transition: width .6s; }
+
+  /* STATS GRID */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    text-align: center;
+  }
+  .stat-num { font-size: 28px; font-weight: 600; }
+  .stat-label { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+  /* BUTTONS */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all .15s;
+    text-decoration: none;
+  }
+  .btn-red { background: var(--red); color: #fff; }
+  .btn-red:hover { background: var(--red-dark); color: #fff; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .btn-outline:hover { background: var(--bg); }
+
+  /* TABLE */
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; padding: 10px 12px; font-weight: 600; border-bottom: 2px solid var(--border); color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: var(--bg); }
+
+  /* UPLOAD ZONE */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 3rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--red);
+    background: var(--red-light);
+  }
+  .upload-icon { font-size: 3rem; margin-bottom: 1rem; }
+
+  /* TABS */
+  .tabs { display: flex; gap: 8px; margin-bottom: 1.5rem; }
+  .tab-btn {
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all .15s;
+  }
+  .tab-btn.active { background: var(--red); color: #fff; border-color: var(--red); }
+
+  /* CHECKS */
+  .checks-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 1rem; }
+  .check-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: var(--bg);
+  }
+  .check-pass { color: var(--green); }
+  .check-fail { color: var(--red); }
+  .check-warn { color: var(--amber); }
+
+  /* FOOTER */
+  footer {
+    text-align: center;
+    padding: 2rem;
+    font-size: 13px;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border);
+    margin-top: 3rem;
+  }
+
+  #loading-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(255,255,255,0.85);
+    z-index: 999;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+  }
+  .spinner {
+    width: 48px; height: 48px;
+    border: 4px solid #eee;
+    border-top-color: var(--red);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="/" class="nav-brand">
+    <span class="brand-badge">🛡️ DocShield</span>
+    Fake Document Detector
+  </a>
+  <ul class="nav-links">
+    <li><a href="/" {% if request.resolver_match.url_name == 'home' %}class="active"{% endif %}>🏠 Home</a></li>
+    <li><a href="/history/" {% if request.resolver_match.url_name == 'history' %}class="active"{% endif %}>📋 History</a></li>
+  </ul>
+</nav>
+
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <p style="font-weight:600">File analyze ho rahi hai...</p>
+  <p style="font-size:13px;color:var(--text-muted)">Thoda ruko, AI check kar raha hai</p>
+</div>
+
+<main>
+  {% block content %}{% endblock %}
+</main>
+
+<footer>
+  <p>🛡️ <strong>DocShield</strong> — Educational purposes only. Always consult official authorities for legal document verification.</p>
+</footer>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>
